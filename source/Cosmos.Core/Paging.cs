@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Cosmos.Core.Memory;
 using IL2CPU.API.Attribs;
 
 namespace Cosmos.Core
@@ -29,10 +30,18 @@ namespace Cosmos.Core
 
             Map(0, 0, PageSize._4MB, PageFlags.RW); //Map the first 4MB of memory
 
+            // Map kernel
             for (ulong i = 0x2000000; i < 0x2500000; i += 0x400000)
             {
                 Map(i, i, PageSize._4MB, PageFlags.RW);
             }
+
+            // Map Memory Manager
+            for (ulong i = (ulong)RAT.RamStart; i < (ulong)(RAT.HeapEnd); i += 0x400000)
+            {
+                Map(i, i, PageSize._4MB, PageFlags.RW);
+            }
+
 
 
 
