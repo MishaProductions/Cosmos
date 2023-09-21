@@ -21,6 +21,8 @@ namespace Cosmos.Core_Asm
 
         [PlugMethod(Assembler = typeof(CPUSetESPValue))]
         public static void SetESPValue(uint val) => throw null;
+        [PlugMethod(Assembler = typeof(CPUGetCR2Value))]
+        public static void GetCR2Value() => throw null;
 
         [PlugMethod(Assembler = typeof(CPUGetStackStart))]
         public static uint GetStackStart() => throw null;

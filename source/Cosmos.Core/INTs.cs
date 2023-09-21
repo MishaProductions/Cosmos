@@ -647,7 +647,33 @@ namespace Cosmos.Core {
         /// <exception cref="System.IndexOutOfRangeException">Thrown on fatal error, contact support.</exception>
         /// <exception cref="System.OverflowException">Thrown on fatal error, contact support.</exception>
         public static void HandleInterrupt_0E(ref IRQContext aContext) {
-            HandleException(aContext.EIP, "Page Fault Exception", "Page Fault Exception", ref aContext);
+            bool present = (aContext.Param & 0x1) != 0;
+            bool read_write = (aContext.Param & 0x2) != 0;
+            bool user_supervisor = (aContext.Param & 0x4) != 0;
+            bool reserved = (aContext.Param & 0x8) != 0;
+            bool execute = (aContext.Param & 0x10) != 0;
+
+            const string xHex = "0123456789ABCDEF";
+            //CPU.GetCR2Value or something here causes a GPF
+            //var faultingAddress = CPU.GetCR2Value();
+            //if(faultingAddress != 0)
+            //{
+            //    PutErrorString(4, 0, "Memory address: ");
+            //    PutErrorChar(4, 16, xHex[(int)((faultingAddress >> 28) & 0xF)]);
+            //    PutErrorChar(4, 17, xHex[(int)((faultingAddress >> 24) & 0xF)]);
+            //    PutErrorChar(4, 18, xHex[(int)((faultingAddress >> 20) & 0xF)]);
+            //    PutErrorChar(4, 19, xHex[(int)((faultingAddress >> 16) & 0xF)]);
+            //    PutErrorChar(4, 20, xHex[(int)((faultingAddress >> 12) & 0xF)]);
+            //    PutErrorChar(4, 21, xHex[(int)((faultingAddress >> 8) & 0xF)]);
+            //    PutErrorChar(4, 22, xHex[(int)((faultingAddress >> 4) & 0xF)]);
+            //    PutErrorChar(4, 23, xHex[(int)(faultingAddress & 0xF)]);
+            //}
+            //else
+            //{
+            //    PutErrorString(4, 0, "Memory address: unknown");
+            //}
+
+            HandleException(aContext.EIP, "Flags: " + (present ? "P, " : "NP, ") + (read_write ? "R, " : "RW, ") + (user_supervisor ? "US, " : "NS, ") + (reserved ? "R, " : "NR, ") + (execute ? "X" : "NX"), "Page Fault", ref aContext, aContext.EIP);
         }
 
         /// <summary>

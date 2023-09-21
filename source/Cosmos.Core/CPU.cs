@@ -47,6 +47,9 @@ namespace Cosmos.Core
         [PlugMethod(PlugRequired = true)]
         internal static void SetESPValue(uint val) => throw null;
 
+        [PlugMethod(PlugRequired = true)]
+        internal static uint GetCR2Value() => throw null;
+
         /// <summary>
         /// Get the address at which the stack starts
         /// </summary>
@@ -491,3 +494,4 @@ namespace Cosmos.Core
         public uint Zero;
     }
 }
+
