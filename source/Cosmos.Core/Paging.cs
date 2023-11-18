@@ -22,8 +22,6 @@ namespace Cosmos.Core
             IsInitCalled = true;
 
             var buf = (byte*)0xB8000;
-            buf[0] = (byte)'A';
-            buf[1] = 0x0f;
 
             PageDirectory = GetBootPageDirectory();
             var firstTable = (uint*)new ManagedMemoryBlock(4096, 4096).Offset;
@@ -35,34 +33,43 @@ namespace Cosmos.Core
             {
                 Map(i, i, PageSize._4MB, PageFlags.RW);
             }
-
             // Map Memory Manager
             for (ulong i = (ulong)RAT.RamStart; i < (ulong)(RAT.HeapEnd); i += 0x400000)
             {
                 Map(i, i, PageSize._4MB, PageFlags.RW);
             }
+            //const string xHex = "0123456789ABCDEF";
+            //var lastKnownAddressValue = CPU.GetEndOfKernel();
+            //if (lastKnownAddressValue != 0)
+            //{
+            //    PutErrorString(1, 0, "End of kernel addr: 0x");
 
-
-
-
-            buf[0] = (byte)'E';
-            buf[1] = 0x0f;
+            //    PutErrorChar(1, 22, xHex[(int)((lastKnownAddressValue >> 28) & 0xF)]);
+            //    PutErrorChar(1, 23, xHex[(int)((lastKnownAddressValue >> 24) & 0xF)]);
+            //    PutErrorChar(1, 24, xHex[(int)((lastKnownAddressValue >> 20) & 0xF)]);
+            //    PutErrorChar(1, 25, xHex[(int)((lastKnownAddressValue >> 16) & 0xF)]);
+            //    PutErrorChar(1, 26, xHex[(int)((lastKnownAddressValue >> 12) & 0xF)]);
+            //    PutErrorChar(1, 27, xHex[(int)((lastKnownAddressValue >> 8) & 0xF)]);
+            //    PutErrorChar(1, 28, xHex[(int)((lastKnownAddressValue >> 4) & 0xF)]);
+            //    PutErrorChar(1, 29, xHex[(int)(lastKnownAddressValue & 0xF)]);
+            //}
 
             CPU.UpdateIDT(true); //Before enabling paging, setup IDT to catch issues
             DoEnable();
             IsEnabled = true;
             buf[0] = (byte)'!';
             buf[1] = 0x0f;
+            
         }
 
         public static void Map(ulong PhysicalAddress, ulong VirtualAddress, PageSize size, PageFlags flags)
         {
-            var pml2Entry = (VirtualAddress >> 22);
+            var pml2Entry = (VirtualAddress >> 22) & 0x03FF;
             var pml1Entry = (VirtualAddress >> 12) & 0x03FF;
 
             if (size == PageSize._4MB)
             {
-                PageDirectory[pml2Entry] = (uint)(PhysicalAddress | (uint)(PageFlags.Present | flags) | (1 << 7));
+                PageDirectory[pml2Entry] = (uint)(PhysicalAddress | ((uint)PageFlags.Present | (uint)flags | (1 << 7)));
                 return;
             }
             else if (size == PageSize._4KB)
@@ -71,10 +78,15 @@ namespace Cosmos.Core
                 var pt = GetNextLevel(pd, pml1Entry, true);
                 pt[pml1Entry] = (uint)(PhysicalAddress | (uint)(PageFlags.Present | flags));
             }
+
+            if (IsEnabled)
+            {
+                RefreshPages();
+            }
         }
         public static void Unmap(ulong PhysicalAddress, ulong VirtualAddress, PageSize size)
         {
-            var pml2Entry = (VirtualAddress >> 22);
+            var pml2Entry = (VirtualAddress >> 22) & 0x03FF;
             var pml1Entry = (VirtualAddress >> 12) & 0x03FF;
 
 
@@ -97,6 +109,11 @@ namespace Cosmos.Core
             else if (size == PageSize._4MB)
             {
                 PageDirectory[pml2Entry] = 0;
+            }
+
+            if (IsEnabled)
+            {
+                RefreshPages();
             }
         }
         /// <summary>
@@ -132,7 +149,33 @@ namespace Cosmos.Core
             topLevel[idx] = (uint)((uint)nextLevel | 0b111);
             return nextLevel;
         }
+        private static void PutErrorChar(int line, int col, char c)
+        {
+            unsafe
+            {
+                byte* xAddress = (byte*)0xB8000;
 
+                xAddress += (line * 80 + col) * 2;
+
+                xAddress[0] = (byte)c;
+                xAddress[1] = 0x0C;
+            }
+        }
+
+        /// <summary>
+        /// Put error string.
+        /// </summary>
+        /// <param name="line">Line to put the error string at.</param>
+        /// <param name="startCol">Starting column to put the error string at.</param>
+        /// <param name="error">Error string to put.</param>
+        /// <exception cref="System.OverflowException">Thrown if error length in greater then Int32.MaxValue.</exception>
+        private static void PutErrorString(int line, int startCol, string error)
+        {
+            for (int i = 0; i < error.Length; i++)
+            {
+                PutErrorChar(line, startCol + i, error[i]);
+            }
+        }
         //plugged
         [PlugMethod(PlugRequired = true)]
         public static uint* GetBootPageDirectory()
